@@ -9,24 +9,24 @@ from PIL import ImageTk
 from PIL import Image
 from scipy.interpolate import UnivariateSpline
 import numpy as np
+from turtle import textinput
+import turtle
 import easygui
+import io
 import os
-
 # Create an instance of tkinter frame
 FirstWindow = tk.Tk()
 FirstWindow.title('ImageProcessing - UI')
 FirstWindow.geometry("1280x1080")
 FirstWindow.config(background="#5cfcff")
-CreateLogo = Image.open(r"C:\Users\Ovidiu\Desktop\ProiectTM\ImageProcessing.png")
-CreateLogo.save(r"C:\Users\Ovidiu\Desktop\ProiectTM\ImageProcessing.ico", format='ICO',
+CreateLogo = Image.open(r"C:\Users\Ovidiu\Desktop\ProiectTM\Images\ImageProcessing.png")
+CreateLogo.save(r"C:\Users\Ovidiu\Desktop\ProiectTM\Images\ImageProcessing.ico", format='ICO',
           sizes=[(40, 40)])
-FirstWindow.iconbitmap(r'C:\Users\Ovidiu\Desktop\ProiectTM\ImageProcessing.ico')
-global img_o
-global pathToImage
-global SaveImage
+FirstWindow.iconbitmap(r'C:\Users\Ovidiu\Desktop\ProiectTM\Images\ImageProcessing.ico')
+global resizeFilteredImage, resizedImage, img_o, pathToImage, SaveImage
 SaveImage = None
-global ResizeImage
-ResizeImage = None
+resizedImage = None
+resizeFilteredImage = None
 def open_file():
   global img_o
   global pathToImage
@@ -65,45 +65,69 @@ def save():
 def grayFilter():
   pass   
 
-def rgbFilter(image):
-	(B, G, R) = cv2.split(image) #spliting the img into RGB components
-	# find the maximum pixel intensity values for each
-	# (x, y)-coordinate,, then set all pixel values less
-	# than M to zero
-	M = np.maximum(np.maximum(R, G), B)
-	R[R < M] = 0
-	G[G < M] = 0
-	B[B < M] = 0
-	# merge the channels back together and return the image
-	return cv2.merge([B, G, R])
+def flipHorrizontally(image):
+    return cv2.flip(image, 1)
 
-def resize_func():
-    global width,height,disp_img,ResizeImage
-    if ResizeImage is None:
-      image = Image.open(pathToImage.name)
-      image = Image.fromarray(image)
+def flipVertically(image):
+    return cv2.flip(image, 0)
+
+def ZoomIn(image):
+    ZoomPercentage = textinput("Zoom In Percentage", "Type percent level of zooming in (a number between 100 - 1000):")
+    scale_percent = int(ZoomPercentage) 
+    width = int(image.shape[1] * scale_percent / 100)
+    height = int(image.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    turtle.bye()
+    return cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
+
+def ZoomOut(image):
+    ZoomPercentage = textinput("Zoom Out Percentage", "Type percent level of zooming out (a number between 100 - 1000):")
+    scale_percent = int(ZoomPercentage) 
+    width = int(image.shape[1] * scale_percent / 100)
+    height = int(image.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    turtle.bye()
+    return cv2.resize(image, dim, interpolation = cv2.INTER_AREA)    
+
+def resizeFunction():
+    global width,height,disp_img,resizeFilteredImage, resizedImage
+    if resizeFilteredImage is None:
+      tkinter.messagebox.showinfo('Be aware!','You need to aply a filter to the image in order to resize it!')
     else:
-      image = Image.fromarray(ResizeImage)
+      image = Image.fromarray(resizeFilteredImage)
     w = int(width.get())
     h = int(height.get())
 
-    resize_img = image.resize((w, h))
-    img = ImageTk.PhotoImage(resize_img)
+    resizedImage = image.resize((w, h))
+    img = ImageTk.PhotoImage(resizedImage)
     disp_img.config(image=img)
     disp_img.image = img
+    resizedImage=np.array(resizedImage)
 
+
+def SaveResizedImg():
+      global resizedImage
+      if resizedImage is None:
+        tkinter.messagebox.showinfo('Be aware!','You need to apply  a filter and resize the image in order to save it!')
+      else:    
+        name = filedialog.asksaveasfilename(title="Save as...", filetypes=(('JPEG', ('*.jpg', '*.jpeg', '*.jpe')), ('PNG', '*.png'), ('BMP', ('*.bmp', '*.jdib')), ('GIF', '*.gif')), defaultextension=".png")
+      if name:
+        cv2.imwrite(name, resizedImage)
+        tkinter.messagebox.showinfo('Be aware!','The resized image has been saved!')
+      else:
+        tkinter.messagebox.showinfo('Be aware!','The action has been cancelled!')
 
 def ApplyFilter(mode):
     global img_o
     global pathToImage
     global SaveImage
-    global ResizeImage
+    global resizeFilteredImage
     if mode==warm:
        img_o=cv2.imread(pathToImage.name)
        img_o=cv2.cvtColor(img_o,cv2.COLOR_BGR2RGB)
        img_o=warm(img_o)
        SaveImage=img_o
-       ResizeImage=img_o
+       resizeFilteredImage=img_o
        scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
        img_o=cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
        img_o=Image.fromarray(img_o)
@@ -111,25 +135,64 @@ def ApplyFilter(mode):
        label2_img=tk.Label(image=img_o)
        label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)
     elif mode==grayFilter:
-       img_o=cv2.imread(pathToImage.name)
+       img_o = cv2.imread(pathToImage.name)
        img_o = cv2.cvtColor(img_o, cv2.COLOR_BGR2GRAY )
-       SaveImage=img_o
-       ResizeImage=img_o
+       SaveImage = img_o
+       resizeFilteredImage=img_o
        scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
-       img_o=cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
-       img_o=Image.fromarray(img_o)
-       img_o=ImageTk.PhotoImage(img_o)
-       label2_img=tk.Label(image=img_o)
+       img_o = cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
+       img_o = Image.fromarray(img_o)
+       img_o = ImageTk.PhotoImage(img_o)
+       label2_img = tk.Label(image=img_o)
        label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)         
-    elif mode==rgbFilter:
+    elif mode==flipHorrizontally:
        img_o=cv2.imread(pathToImage.name)
-       img_o=rgbFilter(img_o)
-       SaveImage=img_o
-      #  img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-      #  img=Image.fromarray(img)
-      #  img=ImageTk.PhotoImage(img)
-       label2_img=tk.Label(image=img_o)
-       label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)       
+       img_o = flipHorrizontally(img_o)
+       SaveImage = img_o
+       resizeFilteredImage = img_o
+       scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
+       img_o = cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
+       img_o = cv2.cvtColor(img_o,cv2.COLOR_BGR2RGB)
+       img_o = Image.fromarray(img_o)
+       img_o = ImageTk.PhotoImage(img_o)
+       label2_img = tk.Label(image=img_o)
+       label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)
+    elif mode==flipVertically:
+       img_o=cv2.imread(pathToImage.name)
+       img_o = flipVertically(img_o)
+       SaveImage = img_o
+       resizeFilteredImage = img_o
+       scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
+       img_o = cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
+       img_o = cv2.cvtColor(img_o,cv2.COLOR_BGR2RGB)
+       img_o = Image.fromarray(img_o)
+       img_o = ImageTk.PhotoImage(img_o)
+       label2_img = tk.Label(image=img_o)
+       label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)
+    elif mode==ZoomIn:
+       img_o=cv2.imread(pathToImage.name)
+       img_o = ZoomIn(img_o)
+       SaveImage = img_o
+       resizeFilteredImage = img_o
+       scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
+       img_o = cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
+       img_o = cv2.cvtColor(img_o,cv2.COLOR_BGR2RGB)
+       img_o = Image.fromarray(img_o)
+       img_o = ImageTk.PhotoImage(img_o)
+       label2_img = tk.Label(image=img_o)
+       label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)
+    elif mode==ZoomOut:
+       img_o=cv2.imread(pathToImage.name)
+       img_o = ZoomOut(img_o)
+       SaveImage = img_o
+       resizeFilteredImage = img_o
+       scaling=(int(img_o.shape[1]*0.5),int(img_o.shape[0]*0.5))
+       img_o = cv2.resize(img_o,scaling,interpolation=cv2.INTER_AREA)
+       img_o = cv2.cvtColor(img_o,cv2.COLOR_BGR2RGB)
+       img_o = Image.fromarray(img_o)
+       img_o = ImageTk.PhotoImage(img_o)
+       label2_img = tk.Label(image=img_o)
+       label2_img.grid(row=0,column=0,sticky=tk.E + tk.W + tk.N + tk.S)        
     elif mode==save:
       if SaveImage is None:
         easygui.msgbox("You need to modify an upload photo in order to save an image!", title="Inform message")
@@ -139,7 +202,7 @@ def ApplyFilter(mode):
         cv2.imwrite(name, SaveImage)
         easygui.msgbox("The modified image has been saved!", title="Inform message")
       else:
-        easygui.msgbox("Wrong Path!", title="Inform message")
+        easygui.msgbox("The action has been cancelled!", title="Inform message")
         
 
 def ShowMenu():
@@ -152,13 +215,26 @@ def ShowMenu():
                     compound = RIGHT , command = lambda:[ApplyFilter(grayFilter)])
   GrayBtn.place(relx = 1, x =-2, y = 50, anchor = NE)
 
-  RGBBtn = Button(FirstWindow, text = 'RGB-Filter', bg= 'green', 
-                    compound = RIGHT , command = lambda:[ApplyFilter(rgbFilter)])
-  RGBBtn.place(relx = 1, x =-2, y = 98, anchor = NE)
+  FlipHorrizontallyBtn = Button(FirstWindow, text = 'FlipHorrizontally', bg= 'green', 
+                    compound = RIGHT , command = lambda:[ApplyFilter(flipHorrizontally)])
+  FlipHorrizontallyBtn.place(relx = 1, x =-2, y = 98, anchor = NE)
+
+
+  flipVerticallyBtn = Button(FirstWindow, text = 'FlipVertically', bg= 'lime', 
+                    compound = RIGHT , command = lambda:[ApplyFilter(flipVertically)])
+  flipVerticallyBtn.place(relx = 1, x =-2, y = 146, anchor = NE)
+
+  ZoomInBtn = Button(FirstWindow, text = 'Zom In', bg= 'purple', 
+                    compound = RIGHT , command = lambda:[ApplyFilter(ZoomIn)])
+  ZoomInBtn.place(relx = 1, x =-2, y = 194, anchor = NE)
+
+  ZoomOutBtn = Button(FirstWindow, text = 'Zom Out', bg= 'violet', 
+                    compound = RIGHT , command = lambda:[ApplyFilter(ZoomOut)])
+  ZoomOutBtn.place(relx = 1, x =-2, y = 242, anchor = NE)
 
   SaveBtn = Button(FirstWindow, text = 'Save', bg= 'red', 
                     compound = RIGHT , command = lambda:[ApplyFilter(save)])
-  SaveBtn.place(relx = 1, x =-2, y = 146, anchor = NE)
+  SaveBtn.place(relx = 1, x =-2, y = 290, anchor = NE)
 
   frame = Frame(FirstWindow)
   frame.grid()
@@ -183,12 +259,19 @@ def ShowMenu():
   disp_img = Label()
   disp_img.grid(pady=1)
 
-  resize_btn = Button(
+  resizeBtn = Button(
       frame,
       text='Resize',
-      command=resize_func
+      command=resizeFunction
   )
-  resize_btn.grid(column= 0)
+  resizeBtn.grid(column= 0)
+
+  SaveResizedImageBtn = Button(
+      frame,
+      text='Save the resized image',
+      command=SaveResizedImg
+  )
+  SaveResizedImageBtn.grid(column= 0)
 
 
 # Adding widgets to the root FirstWindow

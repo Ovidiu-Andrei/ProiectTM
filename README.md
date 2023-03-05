@@ -1,0 +1,1 @@
+This is an interface made it in Python in order to be able to open an image and to apply some filters on it!
